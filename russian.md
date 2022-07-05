@@ -1,6 +1,8 @@
 ![Хорошие практики Laravel](/images/logo-russian.png?raw=true)
 
-Это не пересказ лучших практик вроде SOLID, паттернов и пр. с адаптацией под Laravel. Здесь собраны именно практики, которые игнорируются в реальных Laravel проектах. Также, рекомендую ознакомитсья с [хорошими практиками в контексте PHP](https://github.com/jupeter/clean-code-php). Смотрите также [обсуждение хороших практик Laravel](https://laravel.ru/forum/viewforum.php?id=17).
+Возможно, вам также будет интересно взглянуть на [пример Laravel приложения](https://github.com/alexeymezenin/laravel-realworld-example-app)
+
+[![Laravel example app](/images/laravel-real-world-banner.png?raw=true)](https://github.com/alexeymezenin/laravel-realworld-example-app)
 
 ## Содержание
 
@@ -20,6 +22,8 @@
 
 [Не выполняйте запросы в представлениях и используйте нетерпеливую загрузку (проблема N + 1)](#Не-выполняйте-запросы-в-представлениях-и-используйте-нетерпеливую-загрузку-проблема-n--1)
 
+[Используйте метод chunk при работе с большим количеством данных](#используйте-метод-chunk-при-работе-с-большим-количеством-данных)
+
 [Комментируйте код, предпочитайте читаемые имена методов комментариям](#Комментируйте-код-предпочитайте-читаемые-имена-методов-комментариям)
 
 [Выносите JS и CSS из шаблонов Blade и HTML из PHP кода](#Выносите-js-и-css-из-шаблонов-blade-и-html-из-php-кода)
@@ -36,6 +40,10 @@
 
 [Не работайте с данными из файла `.env` напрямую](#Не-работайте-с-данными-из-файла-env-напрямую)
 
+[العربية](persian.md) (by [ahmedsaoud31](https://github.com/ahmedsaoud31))
+
+[اردو](urdu.md) (by [RizwanAshraf1](https://github.com/RizwanAshraf1))
+
 [Храните даты в стандартном формате. Используйте читатели и преобразователи для преобразования формата](#Храните-даты-в-стандартном-формате-Используйте-читатели-и-преобразователи-для-преобразования-формата)
 
 [Другие советы и практики](#Другие-советы-и-практики)
@@ -46,11 +54,11 @@
 
 Плохо:
 
-```
+```php
 public function getFullNameAttribute()
 {
     if (auth()->user() && auth()->user()->hasRole('client') && auth()->user()->isVerified()) {
-        return 'Mr. ' . $this->first_name . ' ' . $this->middle_name . ' ' $this->last_name;
+        return 'Mr. ' . $this->first_name . ' ' . $this->middle_name . ' ' . $this->last_name;
     } else {
         return $this->first_name[0] . '. ' . $this->last_name;
     }
@@ -59,23 +67,23 @@ public function getFullNameAttribute()
 
 Хорошо:
 
-```
-public function getFullNameAttribute()
+```php
+public function getFullNameAttribute(): bool
 {
     return $this->isVerifiedClient() ? $this->getFullNameLong() : $this->getFullNameShort();
 }
 
-public function isVerfiedClient()
+public function isVerifiedClient(): bool
 {
     return auth()->user() && auth()->user()->hasRole('client') && auth()->user()->isVerified();
 }
 
-public function getFullNameLong()
+public function getFullNameLong(): string
 {
     return 'Mr. ' . $this->first_name . ' ' . $this->middle_name . ' ' . $this->last_name;
 }
 
-public function getFullNameShort()
+public function getFullNameShort(): string
 {
     return $this->first_name[0] . '. ' . $this->last_name;
 }
@@ -85,11 +93,11 @@ public function getFullNameShort()
 
 ### **Тонкие контроллеры, толстые модели**
 
-По своей сути, это лишь один из частных случаев принципа единой ответственности. Выносите работу с данными в модели при работе с Eloquent или в репозитории при работе с Query Builder или "сырыми" SQL запросами.
+Выносите работу с данными в модели.
 
 Плохо:
 
-```
+```php
 public function index()
 {
     $clients = Client::verified()
@@ -104,15 +112,15 @@ public function index()
 
 Хорошо:
 
-```
+```php
 public function index()
 {
     return view('index', ['clients' => $this->client->getWithNewOrders()]);
 }
 
-Class Client extends Model
+class Client extends Model
 {
-    public function getWithNewOrders()
+    public function getWithNewOrders(): Collection
     {
         return $this->verified()
             ->with(['orders' => function ($q) {
@@ -131,7 +139,7 @@ Class Client extends Model
 
 Плохо:
 
-```
+```php
 public function store(Request $request)
 {
     $request->validate([
@@ -146,7 +154,7 @@ public function store(Request $request)
 
 Хорошо:
 
-```
+```php
 public function store(PostRequest $request)
 {    
     ....
@@ -154,7 +162,7 @@ public function store(PostRequest $request)
 
 class PostRequest extends Request
 {
-    public function rules()
+    public function rules(): array
     {
         return [
             'title' => 'required|unique:posts|max:255',
@@ -173,7 +181,7 @@ class PostRequest extends Request
 
 Плохо:
 
-```
+```php
 public function store(Request $request)
 {
     if ($request->hasFile('image')) {
@@ -186,7 +194,7 @@ public function store(Request $request)
 
 Хорошо:
 
-```
+```php
 public function store(Request $request)
 {
     $this->articleService->handleUploadedImage($request->file('image'));
@@ -196,7 +204,7 @@ public function store(Request $request)
 
 class ArticleService
 {
-    public function handleUploadedImage($image)
+    public function handleUploadedImage($image): void
     {
         if (!is_null($image)) {
             $image->move(public_path('images') . 'temp');
@@ -213,7 +221,7 @@ class ArticleService
 
 Плохо:
 
-```
+```php
 public function getActive()
 {
     return $this->where('verified', 1)->whereNotNull('deleted_at')->get();
@@ -229,18 +237,18 @@ public function getArticles()
 
 Хорошо:
 
-```
+```php
 public function scopeActive($q)
 {
-    return $q->where('verified', 1)->whereNotNull('deleted_at');
+    return $q->where('verified', true)->whereNotNull('deleted_at');
 }
 
-public function getActive()
+public function getActive(): Collection
 {
     return $this->active()->get();
 }
 
-public function getArticles()
+public function getArticles(): Collection
 {
     return $this->whereHas('user', function ($q) {
             $q->active();
@@ -256,7 +264,7 @@ Eloquent позволяет писать максимально читаемый
 
 Плохо:
 
-```
+```php
 SELECT *
 FROM `articles`
 WHERE EXISTS (SELECT *
@@ -273,7 +281,7 @@ ORDER BY `created_at` DESC
 
 Хорошо:
 
-```
+```php
 Article::has('user.profile')->verified()->latest()->get();
 ```
 
@@ -283,7 +291,7 @@ Article::has('user.profile')->verified()->latest()->get();
 
 Плохо:
 
-```
+```php
 $article = new Article;
 $article->title = $request->title;
 $article->content = $request->content;
@@ -295,8 +303,8 @@ $article->save();
 
 Хорошо:
 
-```
-$category->article()->create($request->all());
+```php
+$category->article()->create($request->validated());
 ```
 
 [🔝 Наверх](#Содержание)
@@ -305,7 +313,7 @@ $category->article()->create($request->all());
 
 Плохо (будет выполнен 101 запрос в БД для 100 пользователей):
 
-```
+```php
 @foreach (User::all() as $user)
     {{ $user->profile->name }}
 @endforeach
@@ -313,7 +321,7 @@ $category->article()->create($request->all());
 
 Хорошо (будет выполнено 2 запроса в БД для 100 пользователей):
 
-```
+```php
 $users = User::with('profile')->get();
 
 ...
@@ -325,24 +333,42 @@ $users = User::with('profile')->get();
 
 [🔝 Наверх](#Содержание)
 
-### **Комментируйте код, предпочитайте читаемые имена методов комментариям**
+### **Используйте метод chunk при работе с большим количеством данных**
+
+Bad ():
+
+```php
+$users = $this->get();
+
+foreach ($users as $user) {
+    ...
+}
+```
+
+Good:
+
+```php
+$this->chunk(500, function ($users) {
+    foreach ($users as $user) {
+        ...
+    }
+});
+```
+
+[🔝 Наверх](#Содержание)
+
+### **Предпочитайте читаемые имена переменных и методов комментариям**
 
 Плохо:
 
-```
-if (count((array) $builder->getQuery()->joins) > 0)
-```
-
-Лучше:
-
-```
-// Determine if there are any joins.
+```php
+// Determine if there are any joins
 if (count((array) $builder->getQuery()->joins) > 0)
 ```
 
 Хорошо:
 
-```
+```php
 if ($this->hasJoins())
 ```
 
@@ -352,23 +378,23 @@ if ($this->hasJoins())
 
 Плохо:
 
-```
+```php
 let article = `{{ json_encode($article) }}`;
 ```
 
 Лучше:
 
-```
-<input id="article" type="hidden" value="{{ json_encode($article) }}">
+```php
+<input id="article" type="hidden" value='@json($article)'>
 
 Или
 
-<button class="js-fav-article" data-article="{{ json_encode($article) }}">{{ $article->name }}<button>
+<button class="js-fav-article" data-article='@json($article)'>{{ $article->name }}<button>
 ```
 
 В Javascript файле:
 
-```
+```php
 let article = $('#article').val();
 ```
 
@@ -382,7 +408,7 @@ let article = $('#article').val();
 
 Плохо:
 
-```
+```php
 public function isNormal()
 {
     return $article->type === 'normal';
@@ -393,8 +419,8 @@ return back()->with('message', 'Ваша статья была успешно д
 
 Хорошо:
 
-```
-public function isNormal()
+```php
+public function isNormal(): bool
 {
     return $article->type === Article::TYPE_NORMAL;
 }
@@ -412,7 +438,7 @@ Laravel имеет встроенные инструменты для решен
 ------------ | ------------- | -------------
 Авторизация | Политики | Entrust, Sentinel и др. пакеты, собственное решение
 Работа с JS, CSS и пр. | Laravel Mix | Grunt, Gulp, сторонние пакеты
-Среда разработки | Homestead | Docker
+Среда разработки | Laravel Sail, Homestead | Docker
 Разворачивание приложений | Laravel Forge | Deployer и многие другие
 Тестирование | Phpunit, Mockery | Phpspec
 e2e тестирование | Laravel Dusk | Codeception
@@ -421,7 +447,7 @@ e2e тестирование | Laravel Dusk | Codeception
 Работа с данными | Коллекции Laravel | Массивы
 Валидация форм | Request классы | Сторонние пакеты, валидация в контроллере
 Аутентификация | Встроенный функционал | Сторонние пакеты, собственное решение
-Аутентификация API | Laravel Passport | Сторонние пакеты, использующие JWT, OAuth
+Аутентификация API | Laravel Passport, Laravel Sanctum | Сторонние пакеты, использующие JWT, OAuth
 Создание API | Встроенный функционал | Dingo API и другие пакеты
 Работа со структурой БД | Миграции | Работа с БД напрямую
 Локализация | Встроенный функционал | Сторонние пакеты
@@ -449,6 +475,7 @@ e2e тестирование | Laravel Dusk | Codeception
 Таблица | мн. ч. | article_comments | ~~article_comment, articleComments~~
 Pivot таблица | имена моделей в алфавитном порядке в ед. ч. | article_user | ~~user_article, articles_users~~
 Столбец в таблице | snake_case без имени модели | meta_title | ~~MetaTitle; article_meta_title~~
+Свойство модели | snake_case | $model->created_at | ~~$model->createdAt~~
 Внешний ключ | имя модели ед. ч. и _id | article_id | ~~ArticleId, id_article, articles_id~~
 Первичный ключ | - | id | ~~custom_id~~
 Миграция | - | 2017_01_01_000000_create_articles_table | ~~2017_01_01_000000_articles~~
@@ -459,9 +486,9 @@ Pivot таблица | имена моделей в алфавитном пор�
 Коллекция | описательное, мн. ч. | $activeUsers = User::active()->get() | ~~$active, $data~~
 Объект | описательное, ед. ч. | $activeUser = User::active()->first() | ~~$users, $obj~~
 Индексы в конфиге и языковых файлах | snake_case | articles_enabled | ~~ArticlesEnabled; articles-enabled~~
-Представление | snake_case | show_filtered.blade.php | ~~showFiltered.blade.php, show-filtered.blade.php~~
+Представление | kebab-case | show-filtered.blade.php | ~~showFiltered.blade.php, show_filtered.blade.php~~
 Конфигурационный файл | snake_case | google_calendar.php | ~~googleCalendar.php, google-calendar.php~~
-Контракт (интерфейс) | прилагательное или существительное | Authenticatable | ~~AuthenticationInterface, IAuthentication~~
+Контракт (интерфейс) | прилагательное или существительное | AuthenticationInterface | ~~Authenticatable, IAuthentication~~
 Трейт | прилагательное | Notifiable | ~~NotificationTrait~~
 
 [🔝 Наверх](#Содержание)
@@ -470,14 +497,14 @@ Pivot таблица | имена моделей в алфавитном пор�
 
 Плохо:
 
-```
+```php
 $request->session()->get('cart');
 $request->input('name');
 ```
 
 Хорошо:
 
-```
+```php
 session('cart');
 $request->name;
 ```
@@ -491,7 +518,7 @@ $request->name;
 `Session::put('cart', $data)` | `session(['cart' => $data])`
 `$request->input('name'), Request::get('name')` | `$request->name, request('name')`
 `return Redirect::back()` | `return back()`
-`is_null($object->relation) ? $object->relation->id : null }` | `optional($object->relation)->id`
+`is_null($object->relation) ? null : $object->relation->id` | `optional($object->relation)->id`
 `return view('index')->with('title', $title)->with('client', $client)` | `return view('index', compact('title', 'client'))`
 `$request->has('value') ? $request->value : 'default';` | `$request->get('value', 'default')`
 `Carbon::now(), Carbon::today()` | `now(), today()`
@@ -511,14 +538,14 @@ $request->name;
 
 Плохо:
 
-```
+```php
 $user = new User;
-$user->create($request->all());
+$user->create($request->validated());
 ```
 
 Хорошо:
 
-```
+```php
 public function __construct(User $user)
 {
     $this->user = $user;
@@ -526,7 +553,7 @@ public function __construct(User $user)
 
 ....
 
-$this->user->create($request->all());
+$this->user->create($request->validated());
 ```
 
 [🔝 Наверх](#Содержание)
@@ -537,13 +564,13 @@ $this->user->create($request->all());
 
 Плохо:
 
-```
+```php
 $apiKey = env('API_KEY');
 ```
 
 Хорошо:
 
-```
+```php
 // config/api.php
 'key' => env('API_KEY'),
 
@@ -557,33 +584,43 @@ $apiKey = config('api.key');
 
 Плохо:
 
-```
+```php
 {{ Carbon::createFromFormat('Y-d-m H-i', $object->ordered_at)->toDateString() }}
 {{ Carbon::createFromFormat('Y-d-m H-i', $object->ordered_at)->format('m-d') }}
 ```
 
 Хорошо:
 
-```
+```php
 // Модель
-protected $dates = ['ordered_at', 'created_at', 'updated_at']
+protected $dates = ['ordered_at', 'created_at', 'updated_at'];
 // Читатель (accessor)
-public function getMonthDayAttribute($date)
+public function getSomeDateAttribute($date)
 {
     return $date->format('m-d');
 }
 
 // Шаблон
 {{ $object->ordered_at->toDateString() }}
-{{ $object->ordered_at->monthDay }}
+{{ $object->ordered_at->some_date }}
 ```
 
 [🔝 Наверх](#Содержание)
 
 ### **Другие советы и практики**
 
+Не используйте паттерны и инструменты чужеродные по отношению к Laravel и подобным фреймворкам (RoR, Django). Если вам нравятся подходы, используемые в Symfony (Spring и др.), использовать эти фреймворки для создания веб приложений будет намного разумнее.
+
 Не размещайте логику в маршрутах.
 
 Старайтесь не использовать "сырой" PHP в шаблонах Blade.
+
+Используйте базу данных, размещенную в памяти (in-memory DB) при тестировании.
+
+Не меняйте стандартные инструменты фреймворка, иначе у вас могут возникнуть проблемы при обновлении фреймворка и другие сложности.
+
+Используйте современный синтаксис PHP, но при этом не забывайте, что читаемость важнее.
+
+Используйте такие инструменты, как View Composers, с большой осторожностью. В большинстве случаев, есть возможность найти другое решение проблемы.
 
 [🔝 Наверх](#Содержание)

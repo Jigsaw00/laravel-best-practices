@@ -1,12 +1,54 @@
 ![Laravel best practices](/images/logo-english.png?raw=true)
 
+You might also want to check out the [real-world Laravel example application](https://github.com/alexeymezenin/laravel-realworld-example-app)
+
 Translations:
+
+[Nederlands](https://github.com/Protoqol/Beste-Laravel-Praktijken) (by [Protoqol](https://github.com/Protoqol))
+
+[Indonesia](indonesia.md) (by [P0rguy](https://github.com/p0rguy), [Doni Ahmad](https://github.com/donyahmd))
+
+[한국어](https://github.com/xotrs/laravel-best-practices) (by [cherrypick](https://github.com/xotrs))
+
+[日本語](japanese.md) (by [2bo](https://github.com/2bo))
+
+[简体中文](chinese.md) (by [xiaoyi](https://github.com/Shiloh520))
+
+[繁體中文](traditional-chinese.md) (by [woeichern](https://github.com/woeichern))
+
+[ภาษาไทย](thai.md) (by [kongvut sangkla](https://github.com/kongvut))
+
+[বাংলা](bangla.md) (by [Anowar Hossain](https://github.com/AnowarCST))
+
+[فارسی](persian.md) (by [amirhossein baghaie](https://github.com/ohmydevops))
+
+[Português](https://github.com/jonaselan/laravel-best-practices) (by [jonaselan](https://github.com/jonaselan))
+
+[Українська](ukrainian.md) (by [Tenevyk](https://github.com/tenevyk))
 
 [Русский](russian.md)
 
+[Tiếng Việt](https://chungnguyen.xyz/posts/code-laravel-lam-sao-cho-chuan) (by [Chung Nguyễn](https://github.com/nguyentranchung))
 
+[Español](spanish.md) (by [César Escudero](https://github.com/cedaesca))
 
-It's not a Laravel adaptation of SOLID principles, patterns etc. Here you'll find the best practices which are usually ignored in real life Laravel projects.
+[Français](french.md) (by [Mikayil S.](https://github.com/mikayilsrt))
+
+[Polski](polish.md) (by [Karol Pietruszka](https://github.com/pietrushek))
+
+[Türkçe](turkish.md) (by [Burak](https://github.com/ikidnapmyself))
+
+[Deutsch](german.md) (by [Sujal Patel](https://github.com/sujalpatel2209))
+
+[Italiana](italian.md) (by [Sujal Patel](https://github.com/sujalpatel2209))
+
+[Azərbaycanca](https://github.com/Maharramoff/laravel-best-practices-az) (by [Maharramoff](https://github.com/Maharramoff))
+
+[العربية](arabic.md) (by [ahmedsaoud31](https://github.com/ahmedsaoud31))
+
+[اردو](urdu.md) (by [RizwanAshraf1](https://github.com/RizwanAshraf1))
+
+[![Laravel example app](/images/laravel-real-world-banner.png?raw=true)](https://github.com/alexeymezenin/laravel-realworld-example-app)
 
 ## Contents
 
@@ -25,6 +67,8 @@ It's not a Laravel adaptation of SOLID principles, patterns etc. Here you'll fin
 [Mass assignment](#mass-assignment)
 
 [Do not execute queries in Blade templates and use eager loading (N + 1 problem)](#do-not-execute-queries-in-blade-templates-and-use-eager-loading-n--1-problem)
+
+[Chunk data for data-heavy tasks](#chunk-data-for-data-heavy-tasks)
 
 [Comment your code, but prefer descriptive method and variable names over comments](#comment-your-code-but-prefer-descriptive-method-and-variable-names-over-comments)
 
@@ -56,7 +100,7 @@ Bad:
 public function getFullNameAttribute()
 {
     if (auth()->user() && auth()->user()->hasRole('client') && auth()->user()->isVerified()) {
-        return 'Mr. ' . $this->first_name . ' ' . $this->middle_name . ' ' $this->last_name;
+        return 'Mr. ' . $this->first_name . ' ' . $this->middle_name . ' ' . $this->last_name;
     } else {
         return $this->first_name[0] . '. ' . $this->last_name;
     }
@@ -66,22 +110,22 @@ public function getFullNameAttribute()
 Good:
 
 ```php
-public function getFullNameAttribute()
+public function getFullNameAttribute(): bool
 {
     return $this->isVerifiedClient() ? $this->getFullNameLong() : $this->getFullNameShort();
 }
 
-public function isVerfiedClient()
+public function isVerifiedClient(): bool
 {
     return auth()->user() && auth()->user()->hasRole('client') && auth()->user()->isVerified();
 }
 
-public function getFullNameLong()
+public function getFullNameLong(): string
 {
     return 'Mr. ' . $this->first_name . ' ' . $this->middle_name . ' ' . $this->last_name;
 }
 
-public function getFullNameShort()
+public function getFullNameShort(): string
 {
     return $this->first_name[0] . '. ' . $this->last_name;
 }
@@ -91,7 +135,7 @@ public function getFullNameShort()
 
 ### **Fat models, skinny controllers**
 
-Put all DB related logic into Eloquent models or into Repository classes if you're using Query Builder or raw SQL queries.
+Put all DB related logic into Eloquent models.
 
 Bad:
 
@@ -116,9 +160,9 @@ public function index()
     return view('index', ['clients' => $this->client->getWithNewOrders()]);
 }
 
-Class Client extends Model
+class Client extends Model
 {
-    public function getWithNewOrders()
+    public function getWithNewOrders(): Collection
     {
         return $this->verified()
             ->with(['orders' => function ($q) {
@@ -160,7 +204,7 @@ public function store(PostRequest $request)
 
 class PostRequest extends Request
 {
-    public function rules()
+    public function rules(): array
     {
         return [
             'title' => 'required|unique:posts|max:255',
@@ -202,7 +246,7 @@ public function store(Request $request)
 
 class ArticleService
 {
-    public function handleUploadedImage($image)
+    public function handleUploadedImage($image): void
     {
         if (!is_null($image)) {
             $image->move(public_path('images') . 'temp');
@@ -238,15 +282,15 @@ Good:
 ```php
 public function scopeActive($q)
 {
-    return $q->where('verified', 1)->whereNotNull('deleted_at');
+    return $q->where('verified', true)->whereNotNull('deleted_at');
 }
 
-public function getActive()
+public function getActive(): Collection
 {
     return $this->active()->get();
 }
 
-public function getArticles()
+public function getArticles(): Collection
 {
     return $this->whereHas('user', function ($q) {
             $q->active();
@@ -302,7 +346,7 @@ $article->save();
 Good:
 
 ```php
-$category->article()->create($request->all());
+$category->article()->create($request->validated());
 ```
 
 [🔝 Back to contents](#contents)
@@ -331,18 +375,36 @@ $users = User::with('profile')->get();
 
 [🔝 Back to contents](#contents)
 
-### **Comment your code, but prefer descriptive method and variable names over comments**
+### **Chunk data for data-heavy tasks**
+
+Bad ():
+
+```php
+$users = $this->get();
+
+foreach ($users as $user) {
+    ...
+}
+```
+
+Good:
+
+```php
+$this->chunk(500, function ($users) {
+    foreach ($users as $user) {
+        ...
+    }
+});
+```
+
+[🔝 Back to contents](#contents)
+
+### **Prefer descriptive method and variable names over comments**
 
 Bad:
 
 ```php
-if (count((array) $builder->getQuery()->joins) > 0)
-```
-
-Better:
-
-```php
-// Determine if there are any joins.
+// Determine if there are any joins
 if (count((array) $builder->getQuery()->joins) > 0)
 ```
 
@@ -365,16 +427,16 @@ let article = `{{ json_encode($article) }}`;
 Better:
 
 ```php
-<input id="article" type="hidden" value="{{ json_encode($article) }}">
+<input id="article" type="hidden" value='@json($article)'>
 
 Or
 
-<button class="js-fav-article" data-article="{{ json_encode($article) }}">{{ $article->name }}<button>
+<button class="js-fav-article" data-article='@json($article)'>{{ $article->name }}<button>
 ```
 
 In a Javascript file:
 
-```php
+```javascript
 let article = $('#article').val();
 ```
 
@@ -387,7 +449,7 @@ The best way is to use specialized PHP to JS package to transfer the data.
 Bad:
 
 ```php
-public function isNormal()
+public function isNormal(): bool
 {
     return $article->type === 'normal';
 }
@@ -416,7 +478,7 @@ Task | Standard tools | 3rd party tools
 ------------ | ------------- | -------------
 Authorization | Policies | Entrust, Sentinel and other packages
 Compiling assets | Laravel Mix | Grunt, Gulp, 3rd party packages
-Development Environment | Homestead | Docker
+Development Environment | Laravel Sail, Homestead | Docker
 Deployment | Laravel Forge | Deployer and other solutions
 Unit testing | PHPUnit, Mockery | Phpspec
 Browser testing | Laravel Dusk | Codeception
@@ -425,7 +487,7 @@ Templates | Blade | Twig
 Working with data | Laravel collections | Arrays
 Form validation | Request classes | 3rd party packages, validation in controller
 Authentication | Built-in | 3rd party packages, your own solution
-API authentication | Laravel Passport | 3rd party JWT and OAuth packages
+API authentication | Laravel Passport, Laravel Sanctum | 3rd party JWT and OAuth packages
 Creating API | Built-in | Dingo API and similar packages
 Working with DB structure | Migrations | Working with DB structure directly
 Localization | Built-in | 3rd party packages
@@ -453,6 +515,7 @@ All other relationships | plural | articleComments | ~~articleComment, article_c
 Table | plural | article_comments | ~~article_comment, articleComments~~
 Pivot table | singular model names in alphabetical order | article_user | ~~user_article, articles_users~~
 Table column | snake_case without model name | meta_title | ~~MetaTitle; article_meta_title~~
+Model property | snake_case | $model->created_at | ~~$model->createdAt~~
 Foreign key | singular model name with _id suffix | article_id | ~~ArticleId, id_article, articles_id~~
 Primary key | - | id | ~~custom_id~~
 Migration | - | 2017_01_01_000000_create_articles_table | ~~2017_01_01_000000_articles~~
@@ -463,9 +526,9 @@ Variable | camelCase | $articlesWithAuthor | ~~$articles_with_author~~
 Collection | descriptive, plural | $activeUsers = User::active()->get() | ~~$active, $data~~
 Object | descriptive, singular | $activeUser = User::active()->first() | ~~$users, $obj~~
 Config and language files index | snake_case | articles_enabled | ~~ArticlesEnabled; articles-enabled~~
-View | snake_case | show_filtered.blade.php | ~~showFiltered.blade.php, show-filtered.blade.php~~
+View | kebab-case | show-filtered.blade.php | ~~showFiltered.blade.php, show_filtered.blade.php~~
 Config | snake_case | google_calendar.php | ~~googleCalendar.php, google-calendar.php~~
-Contract (interface) | adjective or noun | Authenticatable | ~~AuthenticationInterface, IAuthentication~~
+Contract (interface) | adjective or noun | AuthenticationInterface | ~~Authenticatable, IAuthentication~~
 Trait | adjective | Notifiable | ~~NotificationTrait~~
 
 [🔝 Back to contents](#contents)
@@ -495,7 +558,7 @@ Common syntax | Shorter and more readable syntax
 `Session::put('cart', $data)` | `session(['cart' => $data])`
 `$request->input('name'), Request::get('name')` | `$request->name, request('name')`
 `return Redirect::back()` | `return back()`
-`is_null($object->relation) ? $object->relation->id : null }` | `optional($object->relation)->id`
+`is_null($object->relation) ? null : $object->relation->id` | `optional($object->relation)->id` (in PHP 8: `$object->relation?->id`)
 `return view('index')->with('title', $title)->with('client', $client)` | `return view('index', compact('title', 'client'))`
 `$request->has('value') ? $request->value : 'default';` | `$request->get('value', 'default')`
 `Carbon::now(), Carbon::today()` | `now(), today()`
@@ -517,7 +580,7 @@ Bad:
 
 ```php
 $user = new User;
-$user->create($request->all());
+$user->create($request->validated());
 ```
 
 Good:
@@ -530,7 +593,7 @@ public function __construct(User $user)
 
 ....
 
-$this->user->create($request->all());
+$this->user->create($request->validated());
 ```
 
 [🔝 Back to contents](#contents)
@@ -570,23 +633,33 @@ Good:
 
 ```php
 // Model
-protected $dates = ['ordered_at', 'created_at', 'updated_at']
-public function getMonthDayAttribute($date)
+protected $dates = ['ordered_at', 'created_at', 'updated_at'];
+public function getSomeDateAttribute($date)
 {
     return $date->format('m-d');
 }
 
 // View
 {{ $object->ordered_at->toDateString() }}
-{{ $object->ordered_at->monthDay }}
+{{ $object->ordered_at->some_date }}
 ```
 
 [🔝 Back to contents](#contents)
 
 ### **Other good practices**
 
+Avoid using patterns and tools that are alien to Laravel and similar frameworks (i.e. RoR, Django). If you like Symfony (or Spring) approach for building apps, it's a good idea to use these frameworks instead.
+
 Never put any logic in routes files.
 
 Minimize usage of vanilla PHP in Blade templates.
+
+Use in-memory DB for testing.
+
+Do not override standard framework features to avoid problems related to updating the framework version and many other issues.
+
+Use modern PHP syntax where possible, but don't forget about readability.
+
+Avoid using View Composers and similar tools unless you really know what you're doing. In most cases, there is a better way to solve the problem.
 
 [🔝 Back to contents](#contents)
