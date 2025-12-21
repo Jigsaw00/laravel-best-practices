@@ -1,6 +1,6 @@
 ![Laravel best practices](/images/logo-english.png?raw=true)
 
-You might also want to check out the [real-world Laravel example application](https://github.com/alexeymezenin/laravel-realworld-example-app)
+You might also want to check out the [real-world Laravel example application](https://github.com/alexeymezenin/laravel-realworld-example-app) and [Eloquent SQL reference](https://github.com/alexeymezenin/eloquent-sql-reference)
 
 Translations:
 
@@ -36,7 +36,11 @@ Translations:
 
 [Polski](polish.md) (by [Karol Pietruszka](https://github.com/pietrushek))
 
+[Română](romanian.md) (by [als698](https://github.com/als698))
+
 [Türkçe](turkish.md) (by [Burak](https://github.com/ikidnapmyself))
+
+[Turkmen](turkmen.md) (by [Artyom Osepyan](https://github.com/artengin))
 
 [Deutsch](german.md) (by [Sujal Patel](https://github.com/sujalpatel2209))
 
@@ -48,11 +52,15 @@ Translations:
 
 [اردو](urdu.md) (by [RizwanAshraf1](https://github.com/RizwanAshraf1))
 
+[မြန်မာဘာသာ](burmese.md) (by [Kaung Zay Yan](https://github.com/KaungZayY))
+
 [![Laravel example app](/images/laravel-real-world-banner.png?raw=true)](https://github.com/alexeymezenin/laravel-realworld-example-app)
 
 ## Contents
 
 [Single responsibility principle](#single-responsibility-principle)
+
+[Methods should do just one thing](#methods-should-do-just-one-thing)
 
 [Fat models, skinny controllers](#fat-models-skinny-controllers)
 
@@ -70,7 +78,7 @@ Translations:
 
 [Chunk data for data-heavy tasks](#chunk-data-for-data-heavy-tasks)
 
-[Comment your code, but prefer descriptive method and variable names over comments](#comment-your-code-but-prefer-descriptive-method-and-variable-names-over-comments)
+[Comment your code, but prefer descriptive method and variable names over comments](#prefer-descriptive-method-and-variable-names-over-comments)
 
 [Do not put JS and CSS in Blade templates and do not put any HTML in PHP classes](#do-not-put-js-and-css-in-blade-templates-and-do-not-put-any-html-in-php-classes)
 
@@ -80,24 +88,69 @@ Translations:
 
 [Follow Laravel naming conventions](#follow-laravel-naming-conventions)
 
+[Convention over configuration](#convention-over-configuration)
+
 [Use shorter and more readable syntax where possible](#use-shorter-and-more-readable-syntax-where-possible)
 
-[Use IoC container or facades instead of new Class](#use-ioc-container-or-facades-instead-of-new-class)
+[Use IoC / Service container instead of new Class](#use-ioc--service-container-instead-of-new-class)
 
 [Do not get data from the `.env` file directly](#do-not-get-data-from-the-env-file-directly)
 
 [Store dates in the standard format. Use accessors and mutators to modify date format](#store-dates-in-the-standard-format-use-accessors-and-mutators-to-modify-date-format)
 
+[Do not use DocBlocks](#do-not-use-docblocks)
+
 [Other good practices](#other-good-practices)
 
 ### **Single responsibility principle**
 
-A class and a method should have only one responsibility.
+A class should have only one responsibility.
 
 Bad:
 
 ```php
-public function getFullNameAttribute()
+public function update(Request $request): string
+{
+    $validated = $request->validate([
+        'title' => 'required|max:255',
+        'events' => 'required|array:date,type'
+    ]);
+
+    foreach ($request->events as $event) {
+        $date = $this->carbon->parse($event['date'])->toString();
+
+        $this->logger->log('Update event ' . $date . ' :: ' . $);
+    }
+
+    $this->event->updateGeneralEvent($request->validated());
+
+    return back();
+}
+```
+
+Good:
+
+```php
+public function update(UpdateRequest $request): string
+{
+    $this->logService->logEvents($request->events);
+
+    $this->event->updateGeneralEvent($request->validated());
+
+    return back();
+}
+```
+
+[🔝 Back to contents](#contents)
+
+### **Methods should do just one thing**
+
+A function should do just one thing and do it well.
+
+Bad:
+
+```php
+public function getFullNameAttribute(): string
 {
     if (auth()->user() && auth()->user()->hasRole('client') && auth()->user()->isVerified()) {
         return 'Mr. ' . $this->first_name . ' ' . $this->middle_name . ' ' . $this->last_name;
@@ -110,7 +163,7 @@ public function getFullNameAttribute()
 Good:
 
 ```php
-public function getFullNameAttribute(): bool
+public function getFullNameAttribute(): string
 {
     return $this->isVerifiedClient() ? $this->getFullNameLong() : $this->getFullNameShort();
 }
@@ -190,7 +243,7 @@ public function store(Request $request)
         'publish_at' => 'nullable|date',
     ]);
 
-    ....
+    ...
 }
 ```
 
@@ -198,8 +251,8 @@ Good:
 
 ```php
 public function store(PostRequest $request)
-{    
-    ....
+{
+    ...
 }
 
 class PostRequest extends Request
@@ -230,7 +283,7 @@ public function store(Request $request)
         $request->file('image')->move(public_path('images') . 'temp');
     }
     
-    ....
+    ...
 }
 ```
 
@@ -241,7 +294,7 @@ public function store(Request $request)
 {
     $this->articleService->handleUploadedImage($request->file('image'));
 
-    ....
+    ...
 }
 
 class ArticleService
@@ -302,7 +355,7 @@ public function getArticles(): Collection
 
 ### **Prefer to use Eloquent over using Query Builder and raw SQL queries. Prefer collections over arrays**
 
-Eloquent allows you to write readable and maintainable code. Also, Eloquent has great built-in tools like soft deletes, events, scopes etc.
+Eloquent allows you to write readable and maintainable code. Also, Eloquent has great built-in tools like soft deletes, events, scopes etc. You may want to check out [Eloquent to SQL reference](https://github.com/alexeymezenin/eloquent-sql-reference)
 
 Bad:
 
@@ -338,6 +391,7 @@ $article = new Article;
 $article->title = $request->title;
 $article->content = $request->content;
 $article->verified = $request->verified;
+
 // Add category to article
 $article->category_id = $category->id;
 $article->save();
@@ -355,7 +409,7 @@ $category->article()->create($request->validated());
 
 Bad (for 100 users, 101 DB queries will be executed):
 
-```php
+```blade
 @foreach (User::all() as $user)
     {{ $user->profile->name }}
 @endforeach
@@ -366,8 +420,6 @@ Good (for 100 users, 2 DB queries will be executed):
 ```php
 $users = User::with('profile')->get();
 
-...
-
 @foreach ($users as $user)
     {{ $user->profile->name }}
 @endforeach
@@ -377,7 +429,7 @@ $users = User::with('profile')->get();
 
 ### **Chunk data for data-heavy tasks**
 
-Bad ():
+Bad:
 
 ```php
 $users = $this->get();
@@ -420,7 +472,7 @@ if ($this->hasJoins())
 
 Bad:
 
-```php
+```javascript
 let article = `{{ json_encode($article) }}`;
 ```
 
@@ -477,10 +529,10 @@ Prefer to use built-in Laravel functionality and community packages instead of u
 Task | Standard tools | 3rd party tools
 ------------ | ------------- | -------------
 Authorization | Policies | Entrust, Sentinel and other packages
-Compiling assets | Laravel Mix | Grunt, Gulp, 3rd party packages
+Compiling assets | Laravel Mix, Vite | Grunt, Gulp, 3rd party packages
 Development Environment | Laravel Sail, Homestead | Docker
 Deployment | Laravel Forge | Deployer and other solutions
-Unit testing | PHPUnit, Mockery | Phpspec
+Unit testing | PHPUnit, Mockery | Phpspec, Pest
 Browser testing | Laravel Dusk | Codeception
 DB | Eloquent | SQL, Doctrine
 Templates | Blade | Twig
@@ -500,15 +552,15 @@ DB | MySQL, PostgreSQL, SQLite, SQL Server | MongoDB
 
 ### **Follow Laravel naming conventions**
 
- Follow [PSR standards](http://www.php-fig.org/psr/psr-2/).
- 
- Also, follow naming conventions accepted by Laravel community:
+Follow [PSR standards](https://www.php-fig.org/psr/psr-12/).
+
+Also, follow naming conventions accepted by Laravel community:
 
 What | How | Good | Bad
 ------------ | ------------- | ------------- | -------------
 Controller | singular | ArticleController | ~~ArticlesController~~
 Route | plural | articles/1 | ~~article/1~~
-Named route | snake_case with dot notation | users.show_active | ~~users.show-active, show-active-users~~
+Route name | snake_case with dot notation | users.show_active | ~~users.show-active, show-active-users~~
 Model | singular | User | ~~Users~~
 hasOne or belongsTo relationship | singular | articleComment | ~~articleComments, article_comment~~
 All other relationships | plural | articleComments | ~~articleComment, article_comments~~
@@ -530,6 +582,50 @@ View | kebab-case | show-filtered.blade.php | ~~showFiltered.blade.php, show_fil
 Config | snake_case | google_calendar.php | ~~googleCalendar.php, google-calendar.php~~
 Contract (interface) | adjective or noun | AuthenticationInterface | ~~Authenticatable, IAuthentication~~
 Trait | adjective | Notifiable | ~~NotificationTrait~~
+Trait [(PSR)](https://www.php-fig.org/bylaws/psr-naming-conventions/) | adjective | NotifiableTrait | ~~Notification~~
+Enum | singular | UserType | ~~UserTypes~~, ~~UserTypeEnum~~
+FormRequest | singular | UpdateUserRequest | ~~UpdateUserFormRequest~~, ~~UserFormRequest~~, ~~UserRequest~~
+Seeder | singular | UserSeeder | ~~UsersSeeder~~
+
+[🔝 Back to contents](#contents)
+
+### **Convention over configuration**
+
+As long as you follow certain conventions, you do not need to add additional configuration.
+
+Bad:
+
+```php
+// Table name 'Customer'
+// Primary key 'customer_id'
+class Customer extends Model
+{
+    const CREATED_AT = 'created_at';
+    const UPDATED_AT = 'updated_at';
+
+    protected $table = 'Customer';
+    protected $primaryKey = 'customer_id';
+
+    public function roles(): BelongsToMany
+    {
+        return $this->belongsToMany(Role::class, 'role_customer', 'customer_id', 'role_id');
+    }
+}
+```
+
+Good:
+
+```php
+// Table name 'customers'
+// Primary key 'id'
+class Customer extends Model
+{
+    public function roles(): BelongsToMany
+    {
+        return $this->belongsToMany(Role::class);
+    }
+}
+```
 
 [🔝 Back to contents](#contents)
 
@@ -572,7 +668,7 @@ Common syntax | Shorter and more readable syntax
 
 [🔝 Back to contents](#contents)
 
-### **Use IoC container or facades instead of new Class**
+### **Use IoC / Service container instead of new Class**
 
 new Class syntax creates tight coupling between classes and complicates testing. Use IoC container or facades instead.
 
@@ -586,12 +682,9 @@ $user->create($request->validated());
 Good:
 
 ```php
-public function __construct(User $user)
-{
-    $this->user = $user;
-}
+public function __construct(protected User $user) {}
 
-....
+...
 
 $this->user->create($request->validated());
 ```
@@ -622,6 +715,8 @@ $apiKey = config('api.key');
 
 ### **Store dates in the standard format. Use accessors and mutators to modify date format**
 
+A date as a string is less reliable than an object instance, e.g. a Carbon-instance. It's recommended to pass Carbon objects between classes instead of date strings. Rendering should be done in the display layer (templates):
+
 Bad:
 
 ```php
@@ -633,15 +728,48 @@ Good:
 
 ```php
 // Model
-protected $dates = ['ordered_at', 'created_at', 'updated_at'];
-public function getSomeDateAttribute($date)
-{
-    return $date->format('m-d');
-}
+protected $casts = [
+    'ordered_at' => 'datetime',
+];
 
-// View
+// Blade view
 {{ $object->ordered_at->toDateString() }}
-{{ $object->ordered_at->some_date }}
+{{ $object->ordered_at->format('m-d') }}
+```
+
+[🔝 Back to contents](#contents)
+
+### **Do not use DocBlocks**
+
+DocBlocks reduce readability. Use a descriptive method name and modern PHP features like return type hints instead.
+
+Bad:
+
+```php
+/**
+ * The function checks if given string is a valid ASCII string
+ *
+ * @param string $string String we get from frontend which might contain
+ *                       illegal characters. Returns True is the string
+ *                       is valid.
+ *
+ * @return bool
+ * @author  John Smith
+ *
+ * @license GPL
+ */
+
+public function checkString($string)
+{
+}
+```
+
+Good:
+
+```php
+public function isValidAsciiString(string $string): bool
+{
+}
 ```
 
 [🔝 Back to contents](#contents)
